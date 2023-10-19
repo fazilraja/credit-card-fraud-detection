@@ -17,7 +17,7 @@ def run():
     st.subheader("Anomaly Detection Model")
     
     # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
-    df = pd.read_csv('creditcard.csv')
+    df = pd.read_csv('./input/creditcard.csv')
     
     transaction_amount = st.number_input("Transaction Amount")
     transaction_time = st.number_input("Transaction Time")
