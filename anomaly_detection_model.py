@@ -7,7 +7,9 @@ from joblib import Parallel, delayed
 import time
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 import seaborn as sns
-
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
 
 # Custom node class
 class Node:
@@ -111,7 +113,7 @@ class iForest:
             for i in range(len(X)):
                 path_lengths[i] += tree.path_length(X.iloc[i])
         avg_path_length = path_lengths / self.n_trees
-        return 2 ** (-avg_path_length / c(self.sample_size))
+        return 2 ** (-avg_path_length / self.c(self.sample_size))
     
     # Returns the predictions for each observation in X
     def predict(self, X, scores):
@@ -119,13 +121,14 @@ class iForest:
         predictions = np.array([1 if score > threshold else 0 for score in scores])
         return predictions
 
-def c(size):
-    if size > 2:
-        return 2 * (np.log(size - 1) + np.euler_gamma) - 2 * (size - 1) / size
-    elif size == 2:
-        return 1
-    else:
-        return 0
+    # Helper function for calculating c
+    def c(self, size):
+        if size > 2:
+            return 2 * (np.log(size - 1) + np.euler_gamma) - 2 * (size - 1) / size
+        elif size == 2:
+            return 1
+        else:
+            return 0
 
 def calculate_metrics(y_true, y_pred):
     acc = accuracy_score(y_true, y_pred)
@@ -151,13 +154,14 @@ def run():
 
     # Load and display dataset
     file_path = 'creditcard.csv'  # Update the file path if needed
-    df = pd.read_csv(file_path)
-    if st.checkbox("Show raw data"):
-        st.write(df)
+    df_scaled = pd.read_csv(file_path)
+    scaler = MinMaxScaler()
+    df = pd.DataFrame(scaler.fit_transform(df_scaled), columns=df_scaled.columns)
 
     threshold_slider = st.slider("Select Anomaly Score Threshold Percentile", 0, 100, 95)
-    number_of_trees = st.slider("Select Number of Trees", 0, 1000, 50)
+    number_of_trees = st.slider("Select Number of Trees", 0, 100, 50)
     contamination_rate = st.slider("Select Contamination Rate", 0.0, 0.5, 0.1)
+    height_limit = st.slider("Select Height Limit Rate", 0, 5, 50)
     user_input = st.text_area("Enter transaction features separated by commas (V1, V2, ..., V28, Amount):")
 
     if st.button("Detect Anomaly"):
@@ -170,11 +174,16 @@ def run():
                 return
 
             input_df = pd.DataFrame([input_values], columns=[f'V{i}' for i in range(1, 29)] + ['Amount'])
+            new_scaler = MinMaxScaler()
+            new_scaler.fit(df_scaled.drop(['Time', 'Class'], axis=1))    
+            input_df_scaled = pd.DataFrame(new_scaler.transform(input_df), columns=input_df.columns)
+
+            st.write(input_df_scaled)
 
             # Subsample the dataset
             df_majority = df[df['Class'] == 0]
             df_minority = df[df['Class'] == 1]
-            df_majority_undersampled = df_majority.sample(n=len(df_minority), random_state=42)
+            df_majority_undersampled = df_majority.sample(n=len(df_minority)*9, random_state=42)
             df_balanced = pd.concat([df_majority_undersampled, df_minority])
 
             y_true_balanced = df_balanced['Class']
@@ -188,7 +197,7 @@ def run():
             scores = model.anomaly_score(df_balanced)
             threshold = np.percentile(scores, threshold_slider)
 
-            new_score = model.anomaly_score(input_df)
+            new_score = model.anomaly_score(input_df_scaled)
             is_anomaly = new_score > threshold
 
             end_time = time.time()
@@ -204,14 +213,53 @@ def run():
             y_pred_balanced = model.predict(df_balanced, scores)
             # Calculate metrics
             acc, precision, recall, f1, auc = calculate_metrics(y_true_balanced, y_pred_balanced)
-            st.write(f"Accuracy: {acc}")
-            st.write(f"Precision: {precision}")
-            st.write(f"Recall: {recall}")
-            st.write(f"F1 Score: {f1}")
-            st.write(f"AUC-ROC: {auc}")
+            st.write(f"Accuracy: {acc: .2f}")
+            st.write(f"Precision: {precision: .2f}")
+            st.write(f"Recall: {recall: .2f}")
+            st.write(f"F1 Score: {f1: .2f}")
+            st.write(f"AUC-ROC: {auc: .2f}")
 
             # Plot and display confusion matrix
             st.pyplot(plot_confusion_matrix(y_true_balanced, y_pred_balanced))
+
+            # Separate features and labels
+            X = df.drop('Class', axis=1) 
+            y = df['Class']
+
+            # Split the dataset into training and testing sets
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.03, random_state=42)
+
+            scores = model.anomaly_score(X_test)
+            y_pred_unseen = model.predict(X_test, scores)
+            acc, precision, recall, f1, auc = calculate_metrics(y_test, y_pred_unseen)
+
+            st.write(f"Accuracy: {acc: .2f}")
+            st.write(f"Precision: {precision: .2f}")
+            st.write(f"Recall: {recall: .2f}")
+            st.write(f"F1 Score: {f1: .2f}")
+            st.write(f"AUC-ROC: {auc: .2f}")
+
+            # Plot and display confusion matrix
+            st.pyplot(plot_confusion_matrix(y_test, y_pred_unseen))
+
+            # Sklearn Isolation Forest
+            start_time = time.time()
+            model_sklearn = IsolationForest(n_estimators=number_of_trees, contamination=contamination_rate)
+            model_sklearn.fit(df_balanced)
+            end_time = time.time()
+            st.write(f"Sklearn Execution Time: {(end_time - start_time): .2f} seconds")
+            y_pred_sklearn = model_sklearn.predict(df_balanced)
+            y_pred_sklearn[y_pred_sklearn == 1] = 0
+            y_pred_sklearn[y_pred_sklearn == -1] = 1
+            acc, precision, recall, f1, auc = calculate_metrics(y_true_balanced, y_pred_sklearn)
+            st.write(f"Accuracy: {acc: .2f}")
+            st.write(f"Precision: {precision: .2f}")
+            st.write(f"Recall: {recall:.2f}")
+            st.write(f"F1 Score: {f1:.2f}")
+            st.write(f"AUC-ROC: {auc:.2f}")
+            
+            # Plot and display confusion matrix
+            st.pyplot(plot_confusion_matrix(y_true_balanced, y_pred_sklearn))
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
