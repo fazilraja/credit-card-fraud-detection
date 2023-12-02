@@ -242,11 +242,7 @@ def run():
     df_scaled['Amount'] = scaled_amount
 
     df = df_scaled.copy()
-
-    # # Scale the data
-    # scaler = MinMaxScaler()
-    # df = pd.DataFrame(scaler.fit_transform(df_scaled), columns=df_scaled.columns)
-
+    
     # Create a sidebar menu for model selection
     threshold_slider = st.sidebar.slider("Anomaly Score Threshold Percentile", 0, 100, 90)
     number_of_trees = st.sidebar.slider("Number of Trees", 0, 200, 50)
