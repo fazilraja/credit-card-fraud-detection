@@ -233,17 +233,29 @@ def run():
     file_path = 'creditcard.csv' 
     df_scaled = pd.read_csv(file_path)
 
-    # Scale the data
+    amount = df_scaled['Amount'].values.reshape(-1, 1)
+    # Scale only the 'Amount' column
     scaler = MinMaxScaler()
-    df = pd.DataFrame(scaler.fit_transform(df_scaled), columns=df_scaled.columns)
+    scaled_amount = scaler.fit_transform(amount)
+
+    # Replace the original 'Amount' column with the scaled amount
+    df_scaled['Amount'] = scaled_amount
+
+    df = df_scaled.copy()
+
+    # # Scale the data
+    # scaler = MinMaxScaler()
+    # df = pd.DataFrame(scaler.fit_transform(df_scaled), columns=df_scaled.columns)
 
     # Create a sidebar menu for model selection
-    threshold_slider = st.slider("Select Anomaly Score Threshold Percentile", 0, 100, 90)
-    number_of_trees = st.slider("Select Number of Trees", 0, 200, 50)
-    contamination_rate = st.slider("Select Contamination Rate", 0.0, 0.5, 0.1)
-    height_limit = st.slider("Select Height Limit Rate", 0, 50, 10)
+    threshold_slider = st.sidebar.slider("Anomaly Score Threshold Percentile", 0, 100, 90)
+    number_of_trees = st.sidebar.slider("Number of Trees", 0, 200, 50)
+    height_limit = st.sidebar.slider("Maximum depth of the tree", 0, 50, 10)
     user_input = st.text_area("Enter transaction features separated by commas (V1, V2, ..., V28, Amount):")
 
+    # Used for sklearn's IsolationForest
+    #contamination_rate = st.sidebar.slider("Select Contamination Rate", 0.0, 0.5, 0.1)
+    
     # Detect anomalies for the entered transaction when the button is clicked
     if st.button("Detect Anomaly"):
         # Calculate the execution time
@@ -262,9 +274,6 @@ def run():
             new_scaler = MinMaxScaler()
             new_scaler.fit(df_scaled.drop(['Time', 'Class'], axis=1))    
             input_df_scaled = pd.DataFrame(new_scaler.transform(input_df), columns=input_df.columns)
-            
-            # Display the scaled user input
-            st.write(input_df_scaled)
 
             # Subsample the dataset to balance the classes and split into training and test data
             df_majority = df[df['Class'] == 0]
@@ -290,11 +299,13 @@ def run():
             threshold = np.percentile(model.anomaly_score(X_train), threshold_slider)
 
             # Anomaly detection for the entered transaction
-            new_score = model.anomaly_score(input_df)
+            new_score = model.anomaly_score(input_df_scaled)
             is_anomaly = new_score > threshold
-            print(f"Anomaly Score: {new_score}")
-            print(f"Threshold: {threshold}")
-            print("\n")
+            
+            ## Uncomment the following code to display the anomaly score and threshold
+            # print(f"Anomaly Score: {new_score}")
+            # print(f"Threshold: {threshold}")
+            # print("\n")
             
             # Calculate the execution time
             end_time = time.time()
@@ -309,6 +320,7 @@ def run():
             # Calculate and display metrics for training data using custom isolation forest which was fit to the training data
             y_pred_balanced = model.predict(model.anomaly_score(X_train), threshold=threshold)
             acc, precision, recall, f1, auc = calculate_metrics(y_train, y_pred_balanced)
+            st.write("Metrics for Training Data")
             st.write(f"Accuracy: {acc:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, AUC: {auc:.2f}")
             fig = plot_confusion_matrix(y_train, y_pred_balanced)
             st.pyplot(fig)
@@ -316,6 +328,7 @@ def run():
             # Calculate and display metrics for test data using custom isolation forest which was fit to the training data
             y_pred_unseen = model.predict(model.anomaly_score(X_test), threshold=threshold)
             acc, precision, recall, f1, auc = calculate_metrics(y_test, y_pred_unseen)
+            st.write("Metrics for Test Data")
             st.write(f"Accuracy: {acc:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, AUC: {auc:.2f}")
             fig = plot_confusion_matrix(y_test, y_pred_unseen)
             st.pyplot(fig)
@@ -352,4 +365,5 @@ if __name__ == "__main__":
     run()
 
 # Example transaction input:
-#-1.359807134,-0.072781173,2.536346738,1.378155224,-0.33832077,0.462387778,0.239598554,0.098697901,0.36378697,0.090794172,-0.551599533,-0.617800856,-0.991389847,-0.311169354,1.468176972,-0.470400525,0.207971242,0.02579058,0.40399296,0.251412098,-0.018306778,0.277837576,-0.11047391,0.066928075,0.128539358,-0.189114844,0.133558377,-0.021053053,149.62
+# 0.0,134.0,0.0,123.0,0.0,0.0,0.0,0.0,0.0,-50.0,132.0,-5.0,0.0,-6.0,0.0,0.0,-7.0,0.0,335.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3333.03
+# -1.359807134,-0.072781173,2.536346738,1.378155224,-0.33832077,0.462387778,0.239598554,0.098697901,0.36378697,0.090794172,-0.551599533,-0.617800856,-0.991389847,-0.311169354,1.468176972,-0.470400525,0.207971242,0.02579058,0.40399296,0.251412098,-0.018306778,0.277837576,-0.11047391,0.066928075,0.128539358,-0.189114844,0.133558377,-0.021053053,149.62
