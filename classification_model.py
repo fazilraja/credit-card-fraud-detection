@@ -167,7 +167,6 @@ class DecisionTree:
             return self._traverse_tree(x, node.left)
         return self._traverse_tree(x, node.right)
 
-
 # Load the data
 df = pd.read_csv('creditcard\creditcard.csv')
 
