@@ -245,7 +245,7 @@ def run():
     st.title("Classification Model")
     
     # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
-    filepath = '..\creditcard\creditcard.csv'
+    filepath = 'creditcard.csv'
     data = pd.read_csv(filepath)
 
     # Create sidebar for selecting parameters
@@ -258,8 +258,9 @@ def run():
             # Convert user input to a numpy array and reshape for prediction
             user_input = np.array(user_input.split(',')).astype(float).reshape(1, -1)
             
-            if(len(user_input) != 29):
-                st.error("Please enter 29 features separated by commas.")
+            # Display an error message if the user did not enter 29 features
+            if user_input.shape[1] != 29:
+                st.error("Please enter 29 features separated by commas")
                 return
 
             # Display the user input
