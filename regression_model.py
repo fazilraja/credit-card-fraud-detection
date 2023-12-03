@@ -1,17 +1,21 @@
 import streamlit as st
 import pandas as pd
-
 import numpy as np
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+from sklearn.model_selection import train_test_split
 
 class LogisticRegression:
-    def __init__(self, learning_rate=0.01, num_iterations=1000):
+    def __init__(self, learning_rate=0.01, n_iterations=1000):
         self.learning_rate = learning_rate
-        self.num_iterations = num_iterations
+        self.num_iterations = n_iterations
         self.weights = None
         self.bias = None
 
     def _sigmoid(self, z):
+        # Clip the input values to avoid overflow in the exponential function
+        z = np.clip(z, -500, 500)
         return 1 / (1 + np.exp(-z))
+
 
     def fit(self, X, y):
         num_samples, num_features = X.shape
@@ -31,38 +35,39 @@ class LogisticRegression:
     def predict(self, X):
         model = np.dot(X, self.weights) + self.bias
         predictions = self._sigmoid(model)
-        return [1 if i > 0.5 else 0 for i in predictions]
-
-# Example usage
-# Load your dataset
-# Assuming you have loaded your dataset into a variable 'data'
-# and split it into features 'X' and label 'y'
-file_path = 'creditcard.csv'  # Update the file path if needed
-data = pd.read_csv(file_path)
-
-
-# Normalize your features for better performance
-X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
-
-# Split the dataset into training and testing sets
-# Implement your own function or use sklearn's train_test_split if available
-
-# Create and train the logistic regression model
-model = LogisticRegression(learning_rate=0.001, num_iterations=1000)
-model.fit(X_train, y_train)
-
-# Predict on the test set
-predictions = model.predict(X_test)
-
-# Evaluate the model
-# Implement your own accuracy calculation or use sklearn's metrics
+        return [1 if i > 0.7 else 0 for i in predictions]
 
 
 def run():
     st.subheader("Clustering Model")
     
     # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
-    df = pd.read_csv('creditcard.csv')
+    data = pd.read_csv('creditcard.csv')
     
     # Add code for clustering model here
     st.write("Add your clustering model code here")
+
+    # Subsample the data such that 90& of the data is fradulent and 10% is non-fraudulent
+    fraudulent = data[data['Class'] == 1]
+    non_fraudulent = data[data['Class'] == 0]
+
+    # Randomly sample non-fraudulent transactions
+    non_fraudulent_sample = non_fraudulent.sample(n=len(fraudulent)*9, random_state=42)
+
+    # Combine the fraudulent and non-fraudulent samples
+    subsample = pd.concat([fraudulent, non_fraudulent_sample])
+
+    # Split the data into features and target
+    X = subsample.drop(['Class','Time'], axis=1)
+    y = subsample['Class'].values
+
+    # Split into training and testing set
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.9, random_state=42)
+
+    model = LogisticRegression()
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+
+    
+    

@@ -194,7 +194,7 @@ class DecisionTree:
 
 
 # Load the data
-data = pd.read_csv('credit-card-fraud-detection\creditcard.csv')
+data = pd.read_csv('creditcard.csv')
 
 # Scale the data set
 scaler = MinMaxScaler()
