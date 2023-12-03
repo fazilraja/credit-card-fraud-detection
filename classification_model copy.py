@@ -34,7 +34,7 @@ class Node:
 class DecisionTree:
     """The CART Decision Tree."""
 
-    def __init__(self, min_samples_split=2, max_depth=100):
+    def __init__(self, min_samples_split=2, max_depth=100, class_weight=None):
         """
         Initialization of the Decision Tree.
 
@@ -45,6 +45,7 @@ class DecisionTree:
         self.min_samples_split = min_samples_split
         self.max_depth = max_depth
         self.root = None
+        self.class_weight = class_weight or {0: 1, 1: 1}  # Default weights
 
     def fit(self, X, y):
         """Fit the decision tree model.
@@ -53,7 +54,8 @@ class DecisionTree:
         X (numpy.ndarray): Training features.
         y (numpy.ndarray): Target values.
         """
-        self.root = self._build_tree(X, y)
+        default_class_label = Counter(y).most_common(1)[0][0]
+        self.root = self._build_tree(X, y, 0,default_class_label)
         self._prune(self.root, X, y)  # Pruning after building the tree
 
     def _prune(self, node, X, y):
@@ -65,18 +67,21 @@ class DecisionTree:
             X (numpy.ndarray): Training features.
             y (numpy.ndarray): Target values.
             """
-            if node.is_leaf_node():
+            # Base case: if the node is None or a leaf, return
+            if node is None or node.is_leaf_node():
                 return
 
-            # Prune left and right children first
+            # Recursively prune left and right children
             if node.left is not None:
                 self._prune(node.left, X, y)
             if node.right is not None:
                 self._prune(node.right, X, y)
 
-            # If both children are leaf nodes, check for pruning possibility
-            if node.left.is_leaf_node() and node.right.is_leaf_node():
-                self._cost_complexity_prune(node, X, y)
+            # Ensure both children are not None before accessing their properties
+            if node.left is not None and node.right is not None:
+                # If both children are leaf nodes, check for pruning possibility
+                if node.left.is_leaf_node() and node.right.is_leaf_node():
+                    self._cost_complexity_prune(node, X, y)
 
     def _cost_complexity_prune(self, node, X, y):
         """
@@ -103,39 +108,48 @@ class DecisionTree:
             node.threshold = None
             node.value = Counter(y).most_common(1)[0][0]
 
-    def _build_tree(self, X, y, depth=0):
-        """Recursively build the decision tree.
-
-        Parameters:
-        X (numpy.ndarray): Training features.
-        y (numpy.ndarray): Target values.
-        depth (int): Current depth of the tree.
-        """
+    def _build_tree(self, X, y, depth=0,default_class_label=None):
         num_samples, num_features = X.shape
         best_feature, best_threshold = None, None
 
-        # Check if the node is a leaf node
-        if num_samples >= self.min_samples_split and depth <= self.max_depth:
-            best_gini = float("inf")
-            for feature_index in range(num_features):
-                thresholds = np.unique(X[:, feature_index])
-                for threshold in thresholds:
-                    gini = self._gini_index(X, y, feature_index, threshold)
-                    if gini < best_gini:
-                        best_gini = gini
-                        best_feature = feature_index
-                        best_threshold = threshold
+        # If y is empty, return a leaf node with a default value or the parent class
+        if len(y) == 0:
+            return Node(value=default_class_label) 
 
-        # Check if y is empty
-        if len(y) == 0 or best_feature is None:
-            # If y is empty or no best feature is found, return a default leaf node
-            return Node(value=0)  # Assuming binary classification with classes {0, 1}
+        # Check for stopping criteria
+        if num_samples < self.min_samples_split or depth >= self.max_depth:
+            leaf_value = Counter(y).most_common(1)[0][0]
+            return Node(value=leaf_value)
 
-        # Split the data
-        left_idxs, right_idxs = self._split(X[:, best_feature], best_threshold)
-        left = self._build_tree(X[left_idxs, :], y[left_idxs], depth+1)
-        right = self._build_tree(X[right_idxs, :], y[right_idxs], depth+1)
-        return Node(best_feature, best_threshold, left, right)
+        # Find the best split
+        best_gini = float("inf")
+        for feature_index in range(num_features):
+            thresholds = np.unique(X[:, feature_index])
+            for threshold in thresholds:
+                gini = self._gini_index(X, y, feature_index, threshold)
+                if gini < best_gini:
+                    best_gini = gini
+                    best_feature = feature_index
+                    best_threshold = threshold
+
+        # Check if a split is found
+        if best_feature is not None:
+            left_idxs, right_idxs = self._split(X[:, best_feature], best_threshold)
+            X_left, y_left = X[left_idxs], y[left_idxs]
+            X_right, y_right = X[right_idxs], y[right_idxs]
+
+            print(f"Depth: {depth}, Splitting: {len(X_left)} left, {len(X_right)} right")  # Debugging line
+
+            # Recursively build the left and right subtrees
+            left_subtree = self._build_tree(X_left, y_left, depth + 1)
+            right_subtree = self._build_tree(X_right, y_right, depth + 1)
+
+            return Node(best_feature, best_threshold, left_subtree, right_subtree)
+
+        # If no split is found, return a leaf node
+        leaf_value = Counter(y).most_common(1)[0][0]
+        return Node(value=leaf_value)
+
 
     def predict(self, X):
         """Make predictions using the decision tree.
@@ -160,27 +174,20 @@ class DecisionTree:
             return self._traverse_tree(x, node.right)
 
     def _gini_index(self, X, y, feature_index, threshold):
-        """Calculate the Gini index for a split.
-
-        Parameters:
-        X (numpy.ndarray): Training features.
-        y (numpy.ndarray): Target values.
-        feature_index (int): Feature index.
-        threshold (float): Threshold value.
-        """
         left_idxs, right_idxs = self._split(X[:, feature_index], threshold)
         n = len(y)
         n_left, n_right = len(left_idxs), len(right_idxs)
         if n_left == 0 or n_right == 0:
             return 0
 
-        gini_left = 1.0 - sum([(np.sum(y[left_idxs] == c) / n_left) ** 2 for c in np.unique(y[left_idxs])])
-        gini_right = 1.0 - sum([(np.sum(y[right_idxs] == c) / n_right) ** 2 for c in np.unique(y[right_idxs])])
+        weights = self.class_weight
+        gini_left = 1.0 - sum([(np.sum(y[left_idxs] == c) / n_left) ** 2 * weights.get(c, 1) for c in np.unique(y[left_idxs])])
+        gini_right = 1.0 - sum([(np.sum(y[right_idxs] == c) / n_right) ** 2 * weights.get(c, 1) for c in np.unique(y[right_idxs])])
 
         # Calculate the weighted Gini index
         weighted_gini = (n_left / n) * gini_left + (n_right / n) * gini_right
         return weighted_gini
-
+    
     def _split(self, feature_values, threshold):
         """Split the dataset on a feature and threshold.
 
@@ -194,25 +201,10 @@ class DecisionTree:
 
 
 # Load the data
-data = pd.read_csv('creditcard.csv')
-
-# Scale the data set
-scaler = MinMaxScaler()
-scaled_data_df = pd.DataFrame(scaler.fit_transform(data), columns=data.columns)
-
-# Subsample the data such that 90& of the data is fradulent and 10% is non-fraudulent
-fraudulent = scaled_data_df[scaled_data_df['Class'] == 1]
-non_fraudulent = scaled_data_df[scaled_data_df['Class'] == 0]
-
-# Randomly sample non-fraudulent transactions
-non_fraudulent_sample = non_fraudulent.sample(n=len(fraudulent)*9, random_state=42)
-
-# Combine the fraudulent and non-fraudulent samples
-subsample = pd.concat([fraudulent, non_fraudulent_sample])
-
-# Split the data into features and target
-X = subsample.drop(['Class','Time'], axis=1)
-y = subsample['Class'].values
+#data = pd.read_csv('credit-card-fraud-detection\creditcard.csv')
+data = pd.read_csv('credit-card-fraud-detection\subsample.csv')
+X = data.drop('Class', axis=1)
+y = data['Class'].values
 
 # Split into training and testing set
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -221,8 +213,12 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 X_train = X_train.values
 X_test = X_test.values
 
+# Calculate class weights
+non_fraudulent_weight = 1 / (2 * 0.1)
+fraudulent_weight = 1 / (2 * 0.9)
+
 # Initialize the Decision Tree model
-tree = DecisionTree(min_samples_split=5, max_depth=10)  # Adjust parameters as needed
+tree = DecisionTree(min_samples_split=2, max_depth=5, class_weight={0: non_fraudulent_weight, 1: fraudulent_weight})  # Adjust parameters as needed
 
 # Train the model
 tree.fit(X_train, y_train)
