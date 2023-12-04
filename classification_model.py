@@ -188,6 +188,11 @@ def model_metrics(y_test, y_pred):
     class_report = classification_report(y_test, y_pred, output_dict=True)
     acc_score = accuracy_score(y_test, y_pred)
     auc_score = roc_auc_score(y_test, y_pred)
+
+    # Transform the classification report into a dataframe
+    class_report_df = pd.DataFrame(class_report).transpose()
+    class_report_df = class_report_df.round(2)
+    class_report_df.loc['accuracy', ['precision', 'recall']] = np.nan
     
     # Confusion Matrix
     cm = confusion_matrix(y_test, y_pred)
@@ -205,7 +210,51 @@ def model_metrics(y_test, y_pred):
                     horizontalalignment='center', 
                     verticalalignment='top', 
                     fontsize=16, color='black' if cm[i, j] > cm.max() / 2 else 'white')
-    return plt, class_report, acc_score, auc_score
+    return plt, class_report_df, acc_score, auc_score
+
+def plot_node(node, x, y, delta_x=1.0, delta_y=0.1, level=0, ax=None):
+    """
+    Recursive function to plot a node and its children.
+    
+    Parameters:
+    node: The current node.
+    x, y: Coordinates of the current node.
+    delta_x, delta_y: Horizontal and vertical distances between nodes.
+    level: Current level in the tree.
+    ax: Matplotlib axes object.
+    """
+    if ax is None:
+        ax = plt.gca()
+    
+    box_props = dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="black")
+    
+    if node.is_leaf_node():
+        ax.text(x, y, f'Class: {node.value}', horizontalalignment='center', fontsize=8, bbox=box_props)
+    else:
+        ax.text(x, y, f'Feature {node.feature}\n< {node.threshold:.2f}', horizontalalignment='center', fontsize=8, bbox=box_props)
+        
+        # Left child
+        new_x, new_y = x - delta_x/(2**level), y - delta_y
+        ax.plot([x , new_x], [y, new_y], 'k-')  # Adjust the starting point slightly
+        plot_node(node.left, new_x, new_y, delta_x, delta_y, level+1, ax)
+
+        # Right child
+        new_x, new_y = x + delta_x/(2**level), y - delta_y
+        ax.plot([x , new_x], [y , new_y], 'k-')  # Adjust the starting point slightly
+        plot_node(node.right, new_x, new_y, delta_x, delta_y, level+1, ax)
+
+def visualize_tree(tree):
+    """
+    Visualize the decision tree.
+    
+    Parameters:
+    tree: The decision tree object.
+    """
+    fig, ax = plt.subplots(figsize=(12, 8))
+    plot_node(tree.root, 0.5, 1, 1.0, 0.1, 0, ax=ax)
+    plt.axis('off')
+    
+    return fig
 
 def run():
     st.title("Classification Model")
@@ -215,8 +264,8 @@ def run():
     data = pd.read_csv(filepath)
 
     # Create sidebar for selecting parameters
-    min_samples_split = st.slider("Minimum number of samples required to split a node", 2, 15, 2)
-    max_depth = st.slider("Maximum depth of the tree", 1, 100, 1)
+    min_samples_split = st.sidebar.slider("Minimum number of samples required to split a node", 2, 100, 2)
+    max_depth = st.sidebar.slider("Maximum depth of the tree", 1, 100, 1)
     user_input = st.text_area("Enter transaction features separated by commas (V1, V2, ..., V28, Amount):")
 
     if st.button('Run Model'):
@@ -284,12 +333,13 @@ def run():
             st.write("Performance Metrics:")
             y_pred = clf.predict(X_test)
             fig, class_report, acc_score, auc_score = model_metrics(y_test, y_pred)
-            class_report_df = pd.DataFrame(class_report).transpose()
-            class_report_df = class_report_df.round(2)
-            class_report_df.loc['accuracy', ['precision', 'recall']] = ''
-            st.write(class_report_df)
-            print(class_report_df)
+            st.write(class_report)
             st.write(f"Accuracy Score: {acc_score:.2f}, AUC Score: {auc_score:.2f}")
+            st.pyplot(fig)
+
+            # Visualize the decision tree
+            st.write("Decision Tree:")
+            fig = visualize_tree(clf)
             st.pyplot(fig)
 
         # Display an error message if the user did not enter a transaction 
