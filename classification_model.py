@@ -185,9 +185,9 @@ def print_metrics(y_test, y_pred):
     - Confusion Matrix visualized as a heatmap.
     """
     # Evaluation Metrics
-    print("Classification Report:\n", classification_report(y_test, y_pred))
-    print("Accuracy Score:", accuracy_score(y_test, y_pred))
-    print("AUC:", roc_auc_score(y_test, y_pred))
+    class_report = classification_report(y_test, y_pred, output_dict=True)
+    acc_score = accuracy_score(y_test, y_pred)
+    auc_score = roc_auc_score(y_test, y_pred)
     
     # Confusion Matrix
     cm = confusion_matrix(y_test, y_pred)
@@ -205,83 +205,55 @@ def print_metrics(y_test, y_pred):
                     horizontalalignment='center', 
                     verticalalignment='top', 
                     fontsize=16, color='black' if cm[i, j] > cm.max() / 2 else 'white')
-    plt.show()
-
-# # Load the data
-# df = pd.read_csv('creditcard\creditcard.csv')
-
-# # The function "len" counts the number of classes = 1 and saves it as an object "fraud_records"
-# fraud_records = len(df[df.Class == 1])
-
-# # Defines the index for fraud and non-fraud in the lines:
-# fraud_indices = df[df.Class == 1].index
-# not_fraud_indices = df[df.Class == 0].index
-
-# # Randomly collect equal samples of each type:
-# under_sample_indices = np.random.choice(not_fraud_indices, fraud_records, False)
-# df_undersampled = df.iloc[np.concatenate([fraud_indices, under_sample_indices]),:]
-# X_undersampled = df_undersampled.iloc[:,1:30]
-# y_undersampled = df_undersampled.Class
-# X_train, X_test, y_train, y_test = train_test_split(X_undersampled, y_undersampled, test_size = 0.3)
-
-# # Convert the dataframes to numpy arrays
-# X_train = X_train.values
-# X_test = X_test.values
-
-# # Create a Decision Tree Classifier
-# clf = DecisionTree()
-
-# # Train the model
-# clf.fit(X_train, y_train)
-
-# # Make predictions
-# y_pred = clf.predict(X_test)
-
-# # Evaluate the Classifier
-# print("Classification Report:\n", classification_report(y_test, y_pred))
-# print("Accuracy Score:", accuracy_score(y_test, y_pred))
+    return plt, class_report, acc_score, auc_score
 
 def run():
     st.title("Classification Model")
     
     # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
-    filepath = '..\creditcard\creditcard.csv'
-    data = pd.read_csv(filepath)
+    filepath = 'creditcard.csv'
+    df = pd.read_csv(filepath)
 
     # Create sidebar for selecting parameters
-    min_samples_split = st.sidebar.slider("Minimum number of samples required to split a node", 2, 15, 2)
-    max_depth = st.sidebar.slider("Maximum depth of the tree", 1, 100, 1)
+    min_samples_split = st.slider("Minimum number of samples required to split a node", 2, 15, 2)
+    max_depth = st.slider("Maximum depth of the tree", 1, 100, 1)
     user_input = st.text_area("Enter transaction features separated by commas (V1, V2, ..., V28, Amount):")
 
     if st.button('Run Model'):
         try:
-            # Convert user input to a numpy array and reshape for prediction
-            user_input = np.array(user_input.split(',')).astype(float).reshape(1, -1)
+            # Check if the user entered exactly 29 features
+            user_input = [float(val) for val in user_input.split(',')]
             
-            if(len(user_input) != 29):
+            if len(user_input) != 29:
                 st.error("Please enter 29 features separated by commas.")
                 return
+
+            # Check if the user entered a valid transaction
+            user_input = pd.DataFrame([user_input], columns=[f'V{i}' for i in range(1, 29)] + ['Amount'])
+
+            user_input = user_input.values
 
             # Display the user input
             st.write("User Input:")
             st.write(user_input)
 
-            # Subsample the data such that 90& of the data is fradulent and 10% is non-fraudulent
-            fraudulent = data[data['Class'] == 1]
-            non_fraudulent = data[data['Class'] == 0]
+            # The function "len" counts the number of classes = 1 and saves it as an object "fraud_records"
+            fraud_records = len(df[df.Class == 1])
 
-            # Randomly sample non-fraudulent transactions
-            non_fraudulent_sample = non_fraudulent.sample(n=len(fraudulent)*9, random_state=42)
+            # Defines the index for fraud and non-fraud in the lines:
+            fraud_indices = df[df.Class == 1].index
+            not_fraud_indices = df[df.Class == 0].index
 
-            # Combine the fraudulent and non-fraudulent samples
-            subsample = pd.concat([fraudulent, non_fraudulent_sample])
+            # Randomly collect equal samples of each type:
+            under_sample_indices = np.random.choice(not_fraud_indices, fraud_records, False)
+            df_undersampled = df.iloc[np.concatenate([fraud_indices, under_sample_indices]),:]
+            X_undersampled = df_undersampled.iloc[:,1:30]
+            y_undersampled = df_undersampled.Class
+            X_train, X_test, y_train, y_test = train_test_split(X_undersampled, y_undersampled, test_size = 0.3)
 
-            # Split the data into features and target
-            X = subsample.drop(['Class','Time'], axis=1)
-            y = subsample['Class'].values
-
-            # Split into training and testing set
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.9, random_state=42)
+            # Convert the dataframes to numpy arrays
+            X_train = X_train.values
+            X_test = X_test.values
 
             # Start the execution timer
             start_time = time.time()
@@ -298,14 +270,25 @@ def run():
 
             # Display the prediction
             prediction_label = 'Fraudulent' if user_prediction[0] == 1 else 'Non-Fraudulent'
-            st.write(f"Predicted Class: {prediction_label}")
+            
+            if prediction_label == 'Fraudulent':
+                st.error(f"Predicted Class: {prediction_label}")
+            else:
+                st.success(f"Predicted Class: {prediction_label}")
             st.write(f"Execution Time: {end_time - start_time:.2f} seconds")
 
 
             # Display the performance metrics
             st.write("Performance Metrics:")
             y_pred = clf.predict(X_test)
-            st.write(print_metrics(y_test, y_pred))
+            fig, class_report, acc_score, auc_score = print_metrics(y_test, y_pred)
+            class_report_df = pd.DataFrame(class_report).transpose()
+            class_report_df = class_report_df.round(2)
+            class_report_df.loc['accuracy', ['precision', 'recall']] = ''
+            st.write(class_report_df)
+            print(class_report_df)
+            st.write(f"Accuracy Score: {acc_score:.2f}, AUC Score: {auc_score:.2f}")
+            st.pyplot(fig)
 
         # Display an error message if the user did not enter a transaction 
         except Exception as e:
