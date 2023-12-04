@@ -231,17 +231,7 @@ def run():
 
     # Load the data
     file_path = 'creditcard.csv' 
-    df_scaled = pd.read_csv(file_path)
-
-    amount = df_scaled['Amount'].values.reshape(-1, 1)
-    # Scale only the 'Amount' column
-    scaler = MinMaxScaler()
-    scaled_amount = scaler.fit_transform(amount)
-
-    # Replace the original 'Amount' column with the scaled amount
-    df_scaled['Amount'] = scaled_amount
-
-    df = df_scaled.copy()
+    df = pd.read_csv(file_path)
     
     # Create a sidebar menu for model selection
     threshold_slider = st.sidebar.slider("Anomaly Score Threshold Percentile", 0, 100, 80)
@@ -266,10 +256,6 @@ def run():
 
             # Check if the user entered a valid transaction
             input_df = pd.DataFrame([input_values], columns=[f'V{i}' for i in range(1, 29)] + ['Amount'])
-            # Scale the user input and store it in input_df_scaled
-            new_scaler = MinMaxScaler()
-            new_scaler.fit(df_scaled.drop(['Time', 'Class'], axis=1))    
-            input_df_scaled = pd.DataFrame(new_scaler.transform(input_df), columns=input_df.columns)
 
             # Subsample the dataset to balance the classes and split into training and test data
             df_majority = df[df['Class'] == 0]
@@ -295,7 +281,7 @@ def run():
             threshold = np.percentile(model.anomaly_score(X_train), threshold_slider)
 
             # Anomaly detection for the entered transaction
-            new_score = model.anomaly_score(input_df_scaled)
+            new_score = model.anomaly_score(input_df)
             is_anomaly = new_score > threshold
             
             ## Uncomment the following code to display the anomaly score and threshold
