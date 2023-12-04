@@ -8,16 +8,17 @@ def main():
     st.title("Credit Card Fraud Detection")
 
     # Create a sidebar menu for model selection
-    selected_model = st.sidebar.radio("Select a Model", ["Classification", "Regression", "Anomaly Detection"])
+    selected_model = st.sidebar.radio("Select a Model", ["Anomaly Detection", "Classification", "Regression"])
 
-    if selected_model == "Classification":
+    if selected_model == "Anomaly Detection":
+        anomaly_detection_model.run()
+
+    elif selected_model == "Classification":
         classification_model.run()
 
     elif selected_model == "Regression":
         regression_model.run()
 
-    elif selected_model == "Anomaly Detection":
-        anomaly_detection_model.run()
 
 if __name__ == "__main__":
     main()
