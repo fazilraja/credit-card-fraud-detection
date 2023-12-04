@@ -13,12 +13,12 @@ Before setting up the project, ensure you have Anaconda installed on your system
 The project uses a dataset named creditcard.csv which is essential for the fraud detection models. This dataset can be obtained in two ways:
 
 - Using Provided Zip File:
- -  Locate the creditcard.csv.zip file in the project directory.
- - Unzip this file to extract the creditcard.csv file.
- - Ensure that the extracted CSV file is in the same directory as your project files for easy access by the application.
+    - Locate the creditcard.csv.zip file in the project directory.
+    - Unzip this file to extract the creditcard.csv file.
+    - Ensure that the extracted CSV file is in the same directory as your project files for easy access by the application.
 - Downloading from Kaggle:
- - Alternatively, you can download the dataset directly from Kaggle at this link (https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud).
- - After downloading, unzip the file and place creditcard.csv in the project's working directory.
+    - Alternatively, you can download the dataset directly from Kaggle at this link (https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud).
+    - After downloading, unzip the file and place creditcard.csv in the project's working directory.
 
 ## Setting Up the Conda Virtual Environment
 
