@@ -227,7 +227,7 @@ def run():
     """
     Runs the anomaly detection model.
     """
-    st.title("Anomaly Detection")
+    st.subheader("Anomaly Detection")
 
     # Load the data
     file_path = 'creditcard.csv' 
