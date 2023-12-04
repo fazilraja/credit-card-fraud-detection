@@ -170,9 +170,9 @@ class DecisionTree:
             return self._traverse_tree(x, node.left)
         return self._traverse_tree(x, node.right)
 
-def print_metrics(y_test, y_pred):
+def model_metrics(y_test, y_pred):
     """
-    Evaluates and displays the performance metrics of a classifier.
+    Evaluates and returns the performance metrics of a classifier.
 
     Parameters:
     y_test (NumPy Array): True labels for the test dataset.
@@ -283,7 +283,7 @@ def run():
             # Display the performance metrics
             st.write("Performance Metrics:")
             y_pred = clf.predict(X_test)
-            fig, class_report, acc_score, auc_score = print_metrics(y_test, y_pred)
+            fig, class_report, acc_score, auc_score = model_metrics(y_test, y_pred)
             class_report_df = pd.DataFrame(class_report).transpose()
             class_report_df = class_report_df.round(2)
             class_report_df.loc['accuracy', ['precision', 'recall']] = ''
@@ -297,6 +297,4 @@ def run():
             st.error(f"An error occurred: {e}")
 
 if __name__ == "__main__":
-    run()
-
-            
+    run() 
