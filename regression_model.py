@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from sklearn.model_selection import train_test_split
+import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from matplotlib import pyplot as plt
+
 
 class LogisticRegression:
     def __init__(self, learning_rate=0.01, n_iterations=1000):
@@ -37,16 +41,45 @@ class LogisticRegression:
         predictions = self._sigmoid(model)
         return [1 if i > 0.7 else 0 for i in predictions]
 
-
-def run():
-    st.subheader("Clustering Model")
+# Custom function for calculating metrics for the data
+def calculate_metrics(y_true, y_pred):
+    """
+    Calculates accuracy, precision, recall, f1, and auc for the data using sklearn's metrics functions.
+    """
+    acc = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    auc = roc_auc_score(y_true, y_pred)
     
-    # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
-    data = pd.read_csv('creditcard.csv')
-    
-    # Add code for clustering model here
-    st.write("Add your clustering model code here")
+    return acc, precision, recall, f1, auc
 
+# Custom function for plotting the confusion matrix
+def plot_confusion_matrix(y_true, y_pred):
+    """
+    Creates a confusion matrix plot using seaborn's heatmap function.
+    """
+    cm = confusion_matrix(y_true, y_pred)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
+    ax.set_xlabel('Predicted')
+    ax.set_ylabel('True')
+    ax.set_title('Confusion Matrix')
+    return fig
+
+def scale_input(input_values, data):
+    """
+    Scales the input data using the same scaler used for the training data.
+    """
+    input_df = pd.DataFrame([input_values], columns=[f'V{i}' for i in range(1, 29)] + ['Amount'])
+    #scaler = MinMaxScaler()
+    #scaler.fit(data.drop(['Time', 'Class'], axis=1))
+    #input_df_scaled = pd.DataFrame(scaler.transform(input_df), columns=input_df.columns)
+    return input_df
+
+def subsample_data(data):
+    scaler = StandardScaler()
+    scaler.fit(data.drop(['Time', 'Class'], axis=1))    
     # Subsample the data such that 90& of the data is fradulent and 10% is non-fraudulent
     fraudulent = data[data['Class'] == 1]
     non_fraudulent = data[data['Class'] == 0]
@@ -64,10 +97,74 @@ def run():
     # Split into training and testing set
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.9, random_state=42)
 
-    model = LogisticRegression()
-    model.fit(X_train, y_train)
+    return X_train, X_test, y_train, y_test
 
-    predictions = model.predict(X_test)
+
+
+def run():
+    st.subheader("Regression Model")
+    
+    # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
+    data = pd.read_csv('creditcard.csv')
+
+    # Scale the data set
+    #scaler = MinMaxScaler()
+    #df = pd.DataFrame(scaler.fit_transform(data), columns=data.columns)
+
 
     
+    # Create sliders for num_iterations and learning_rate
+    st.sidebar.subheader("Model Hyperparameters")
+    num_iterations = st.sidebar.number_input("Number of iterations", 100, 1000, step=10, key='num_iterations')
+    learning_rate = st.sidebar.number_input("Learning rate", 0.01, 1.0, step=0.01, key='learning_rate')
+
+    user_input = st.text_area("Enter transaction features separated by commas (V1, V2, ..., V28, Amount):")
+
+    if st.button("Detect Anomaly"):
+
+        # Check if the user entered a transaction
+        try:
+            # Check if the user entered exactly 29 features
+            input_values = [float(val) for val in user_input.split(',')]
+            if len(input_values) != 29:
+                st.error("Please enter exactly 29 features.")
+                return
+            
+            # Scale the input data
+            input_df_scaled = scale_input(input_values, data)
+
+             #print to if input scaled
+            st.write(input_df_scaled)
+
+
+            # subsample the data
+            X_train, X_test, y_train, y_test = subsample_data(data)
+
+            model = LogisticRegression(n_iterations=num_iterations, learning_rate=learning_rate)
+            model.fit(X_train, y_train)
+
+            st.write("Model trained successfully.")
+
+            predictions = model.predict(input_df_scaled)
+
+            if predictions[0] == 1:
+                st.error("This transaction is fraudulent.")
+            else:
+                st.success("This transaction is not fraudulent.")
+
+            y_pred = model.predict(X_test)
+            acc, precision, recall, f1, auc = calculate_metrics(y_test, y_pred)
+            st.write("Metrics for the model:")
+            st.write(f"Accuracy: {acc:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, AUC: {auc:.2f}")
+            fig = plot_confusion_matrix(y_test, y_pred)
+            st.pyplot(fig)
+
+        except Exception as e:
+            st.error(f"Please enter a valid input. Error: {e}")
     
+if __name__ == "__main__":
+    run()
+
+# Example transaction input:
+# 0.0,134.0,0.0,123.0,0.0,0.0,0.0,0.0,0.0,-50.0,132.0,-5.0,0.0,-6.0,0.0,0.0,-7.0,0.0,335.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3333.03
+# -1.359807134,-0.072781173,2.536346738,1.378155224,-0.33832077,0.462387778,0.239598554,0.098697901,0.36378697,0.090794172,-0.551599533,-0.617800856,-0.991389847,-0.311169354,1.468176972,-0.470400525,0.207971242,0.02579058,0.40399296,0.251412098,-0.018306778,0.277837576,-0.11047391,0.066928075,0.128539358,-0.189114844,0.133558377,-0.021053053,149.62
