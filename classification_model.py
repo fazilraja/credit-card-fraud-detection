@@ -212,7 +212,7 @@ def run():
     
     # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
     filepath = 'creditcard.csv'
-    df = pd.read_csv(filepath)
+    data = pd.read_csv(filepath)
 
     # Create sidebar for selecting parameters
     min_samples_split = st.slider("Minimum number of samples required to split a node", 2, 15, 2)
@@ -237,21 +237,23 @@ def run():
             st.write("User Input:")
             st.write(user_input)
 
-            # The function "len" counts the number of classes = 1 and saves it as an object "fraud_records"
-            fraud_records = len(df[df.Class == 1])
+            # Subsample the data such that 90& of the data is fradulent and 10% is non-fraudulent
+            fraudulent = data[data['Class'] == 1]
+            non_fraudulent = data[data['Class'] == 0]
 
-            # Defines the index for fraud and non-fraud in the lines:
-            fraud_indices = df[df.Class == 1].index
-            not_fraud_indices = df[df.Class == 0].index
+            # Randomly sample non-fraudulent transactions
+            non_fraudulent_sample = non_fraudulent.sample(n=len(fraudulent)*9, random_state=42)
 
-            # Randomly collect equal samples of each type:
-            under_sample_indices = np.random.choice(not_fraud_indices, fraud_records, False)
-            df_undersampled = df.iloc[np.concatenate([fraud_indices, under_sample_indices]),:]
-            X_undersampled = df_undersampled.iloc[:,1:30]
-            y_undersampled = df_undersampled.Class
-            X_train, X_test, y_train, y_test = train_test_split(X_undersampled, y_undersampled, test_size = 0.3)
+            # Combine the fraudulent and non-fraudulent samples
+            subsample = pd.concat([fraudulent, non_fraudulent_sample])
 
-            # Convert the dataframes to numpy arrays
+            # Split the data into features and target
+            X = subsample.drop(['Class','Time'], axis=1)
+            y = subsample['Class'].values
+
+            # Split into training and testing set
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.9, random_state=42)
+                        # Convert the dataframes to numpy arrays
             X_train = X_train.values
             X_test = X_test.values
 
