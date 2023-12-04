@@ -302,7 +302,8 @@ def run():
 
             # Split into training and testing set
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.9, random_state=42)
-                        # Convert the dataframes to numpy arrays
+            
+            # Convert the dataframes to numpy arrays
             X_train = X_train.values
             X_test = X_test.values
 
@@ -328,13 +329,16 @@ def run():
                 st.success(f"Predicted Class: {prediction_label}")
             st.write(f"Execution Time: {end_time - start_time:.2f} seconds")
 
-
             # Display the performance metrics
             st.write("Performance Metrics:")
             y_pred = clf.predict(X_test)
             fig, class_report, acc_score, auc_score = model_metrics(y_test, y_pred)
             st.write(class_report)
             st.write(f"Accuracy Score: {acc_score:.2f}, AUC Score: {auc_score:.2f}")
+            
+            # Display the shape of the training and testing sets as a dataframe
+            st.write(f"Training Set Shape: {X_train.shape}")
+            st.write(f"Testing Set Shape: {X_test.shape}")
             st.pyplot(fig)
 
             # Visualize the decision tree
