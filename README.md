@@ -28,7 +28,7 @@ Follow these steps to set up the conda environment:
 - conda activate myenv
 - conda install pip
 - pip install -r requirements.txt
-- streamlit run GUI.py
+- streamlit run Group4_GUI.py
 
 ## Verification of Setup
 
