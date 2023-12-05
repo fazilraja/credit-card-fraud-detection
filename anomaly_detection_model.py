@@ -314,29 +314,6 @@ def run():
             st.write(f"Accuracy: {acc:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, AUC: {auc:.2f}")
             fig = plot_confusion_matrix(y_test, y_pred_unseen)
             st.pyplot(fig)
-
-            """
-            Uncomment the following code to compare the custom isolation forest with sklearn's IsolationForest
-            """
-            # # Use sklearn's IsolationForest with training data for comparison with custom isolation forest
-            # model_sklearn = IsolationForest(n_estimators=number_of_trees, contamination=contamination_rate, max_samples=256)
-            # model_sklearn.fit(X_train)
-            # y_pred_sklearn = model_sklearn.predict(X_train)
-            # y_pred_sklearn[y_pred_sklearn == 1] = 0
-            # y_pred_sklearn[y_pred_sklearn == -1] = 1
-            # acc, precision, recall, f1, auc = calculate_metrics(y_train, y_pred_sklearn)
-            # st.write(f"Accuracy: {acc:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, AUC: {auc:.2f}")
-            # fig = plot_confusion_matrix(y_train, y_pred_sklearn)
-            # st.pyplot(fig)
-
-            # # Use sklearn's IsolationForest with test data for comparison with custom isolation forest
-            # y_pred_sklearn_unseen = model_sklearn.predict(X_test)
-            # y_pred_sklearn_unseen[y_pred_sklearn_unseen == 1] = 0
-            # y_pred_sklearn_unseen[y_pred_sklearn_unseen == -1] = 1
-            # acc, precision, recall, f1, auc = calculate_metrics(y_test, y_pred_sklearn_unseen)
-            # st.write(f"Accuracy: {acc:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, AUC: {auc:.2f}")
-            # fig = plot_confusion_matrix(y_test, y_pred_sklearn_unseen)
-            # st.pyplot(fig)
            
         # Display an error message if the user did not enter a transaction 
         except Exception as e:
