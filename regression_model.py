@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from matplotlib import pyplot as plt
+import time
 
 
 class LogisticRegression:
@@ -107,6 +108,8 @@ def run():
     # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
     data = pd.read_csv('creditcard.csv')
     
+    start_time = time.time()
+
     # Create sliders for num_iterations and learning_rate
     st.sidebar.subheader("Model Hyperparameters")
     num_iterations = st.sidebar.slider("Number of iterations", 100, 2000, 1000)
@@ -137,10 +140,14 @@ def run():
             # Make predictions
             predictions = model.predict(input_df_scaled)
 
+            # get the end time
+            end_time = time.time()
+
             if predictions[0] == 1:
                 st.error("This transaction is fraudulent.")
             else:
                 st.success("This transaction is not fraudulent.")
+            st.write(f"Excecution Time: {end_time - start_time:.2f} seconds")
 
             # Calculate metrics and plot confusion matrix
             y_pred = model.predict(X_test)
