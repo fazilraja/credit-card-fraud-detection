@@ -106,21 +106,15 @@ def run():
     
     # Load the dataset (replace 'creditcard.csv' with the actual path to your dataset)
     data = pd.read_csv('creditcard.csv')
-
-    # Scale the data set
-    #scaler = MinMaxScaler()
-    #df = pd.DataFrame(scaler.fit_transform(data), columns=data.columns)
-
-
     
     # Create sliders for num_iterations and learning_rate
     st.sidebar.subheader("Model Hyperparameters")
-    num_iterations = st.sidebar.number_input("Number of iterations", 100, 1000, step=10, key='num_iterations')
-    learning_rate = st.sidebar.number_input("Learning rate", 0.01, 1.0, step=0.01, key='learning_rate')
+    num_iterations = st.sidebar.slider("Number of iterations", 100, 2000, 1000)
+    learning_rate = st.sidebar.slider("Learning rate", 0.01, 1.0, 0.01)
 
     user_input = st.text_area("Enter transaction features separated by commas (V1, V2, ..., V28, Amount):")
 
-    if st.button("Detect Anomaly"):
+    if st.button("Run Model"):
 
         # Check if the user entered a transaction
         try:
@@ -133,18 +127,14 @@ def run():
             # Scale the input data
             input_df_scaled = scale_input(input_values, data)
 
-             #print to if input scaled
-            st.write(input_df_scaled)
-
-
             # subsample the data
             X_train, X_test, y_train, y_test = subsample_data(data)
 
+            # create and fit the model
             model = LogisticRegression(n_iterations=num_iterations, learning_rate=learning_rate)
             model.fit(X_train, y_train)
-
-            st.write("Model trained successfully.")
-
+            
+            # Make predictions
             predictions = model.predict(input_df_scaled)
 
             if predictions[0] == 1:
@@ -152,6 +142,7 @@ def run():
             else:
                 st.success("This transaction is not fraudulent.")
 
+            # Calculate metrics and plot confusion matrix
             y_pred = model.predict(X_test)
             acc, precision, recall, f1, auc = calculate_metrics(y_test, y_pred)
             st.write("Metrics for the model:")
@@ -164,7 +155,3 @@ def run():
     
 if __name__ == "__main__":
     run()
-
-# Example transaction input:
-# 0.0,134.0,0.0,123.0,0.0,0.0,0.0,0.0,0.0,-50.0,132.0,-5.0,0.0,-6.0,0.0,0.0,-7.0,0.0,335.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,3333.03
-# -1.359807134,-0.072781173,2.536346738,1.378155224,-0.33832077,0.462387778,0.239598554,0.098697901,0.36378697,0.090794172,-0.551599533,-0.617800856,-0.991389847,-0.311169354,1.468176972,-0.470400525,0.207971242,0.02579058,0.40399296,0.251412098,-0.018306778,0.277837576,-0.11047391,0.066928075,0.128539358,-0.189114844,0.133558377,-0.021053053,149.62
