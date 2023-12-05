@@ -229,9 +229,9 @@ def plot_node(node, x, y, delta_x=1.0, delta_y=0.1, level=0, ax=None):
     box_props = dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="black")
     
     if node.is_leaf_node():
-        ax.text(x, y, f'Class: {node.value}', horizontalalignment='center', fontsize=8, bbox=box_props)
+        ax.text(x, y, f'Class: {node.value}', horizontalalignment='center', fontsize=12, bbox=box_props)
     else:
-        ax.text(x, y, f'Feature {node.feature}\n< {node.threshold:.2f}', horizontalalignment='center', fontsize=8, bbox=box_props)
+        ax.text(x, y, f'Feature {node.feature}\n< {node.threshold:.2f}', horizontalalignment='center', fontsize=12, bbox=box_props)
         
         # Left child
         new_x, new_y = x - delta_x/(2**level), y - delta_y
