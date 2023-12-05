@@ -16,30 +16,38 @@ class LogisticRegression:
         self.weights = None
         self.bias = None
 
+    # Custom function for calculating the sigmoid
     def _sigmoid(self, z):
         # Clip the input values to avoid overflow in the exponential function
         z = np.clip(z, -500, 500)
         return 1 / (1 + np.exp(-z))
 
-
+    # Custom function for calculating the loss
     def fit(self, X, y):
+        # Initialize weights and bias to zeros
         num_samples, num_features = X.shape
         self.weights = np.zeros(num_features)
         self.bias = 0
-
+        
+        # Gradient descent
         for _ in range(self.num_iterations):
             model = np.dot(X, self.weights) + self.bias
             predictions = self._sigmoid(model)
 
+            # Calculate derivatives
             dw = (1 / num_samples) * np.dot(X.T, (predictions - y))
             db = (1 / num_samples) * np.sum(predictions - y)
 
+            # Update weights and bias
             self.weights -= self.learning_rate * dw
             self.bias -= self.learning_rate * db
 
+    # Custom function for making predictions
     def predict(self, X):
+        # Calculate the model output (same as the sigmoid function in the _sigmoid method)
         model = np.dot(X, self.weights) + self.bias
         predictions = self._sigmoid(model)
+        # Convert the output to 0/1 predictions using a threshold of 0.7
         return [1 if i > 0.7 else 0 for i in predictions]
 
 # Custom function for calculating metrics for the data
